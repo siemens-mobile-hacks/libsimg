@@ -21,4 +21,4 @@ uint8_t *simg_unpack_1bit_raw(const uint8_t *data, uint16_t width, uint16_t heig
 int simg_write_png(const char *filename, const uint8_t *pixels, uint16_t width, uint16_t height, int type);
 
 uint32_t simg_addr_to_offset(const uint8_t *p);
-uint8_t *simg_find_pit(const uint8_t *buffer, size_t size, int platform);
+uint8_t *simg_find_pit(const uint8_t *buffer, size_t size, int *platform);

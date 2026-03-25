@@ -169,33 +169,36 @@ uint32_t simg_addr_to_offset(const uint8_t *p) {
     return addr - 0xA0000000;
 }
 
-uint8_t *simg_find_pit(const uint8_t *buffer, size_t size, int platform) {
-    const uint8_t sig[] = {0x52, 0x45, 0xFF, 0xFF};
-    uint8_t *found = memmem(buffer, size, sig, sizeof(sig));
-    if (!found) return NULL;
-
-    found += sizeof(sig);
-    found = memmem(found, 0xFF, "RESOURCE", 8);
-    if (!found) return NULL;
-
-    if (found + 12 > buffer + size) return NULL;
-    found += 12;
-    if (platform == 0) { // SGOLD
-        return found;
-    }
-
-    // NSG & ELKA
-    if (found + 8 + 4 > buffer + size) return NULL;
-    found += 8;
-    uint32_t offset = simg_addr_to_offset(found);
-    if (!offset || offset >= size) return NULL;
-
-    found = memmem(buffer + offset, 0xFF, (uint8_t[]){0x1E, 0xFF, 0x2F, 0xE1}, 4); // ARM BX LR
-    if (found + 8 > buffer + size) return NULL;
-    found += 4;
-
-    offset = simg_addr_to_offset(found);
-    if (!offset || offset >= size) return NULL;
-    found = (uint8_t*)buffer + offset;
+static uint8_t *find_sig(const uint8_t *buffer, size_t size, const uint8_t *sig, size_t sig_size) {
+    uint8_t *found = memmem(buffer, size, sig, sig_size);
+    if (!found || found + sig_size > buffer + size) return NULL;
+    const uint8_t byte = *(found + sig_size + 3);
+    if ((byte & 0xF0) != 0xA0) return NULL;
     return found;
+}
+
+uint8_t *simg_find_pit(const uint8_t *buffer, size_t size, int *platform) {
+    size_t sig_size = 8;
+    uint8_t *pit = find_sig(buffer, size,  (uint8_t[]){0x15, 0x00, 0x10, 0x00, 0x8A, 0x00, 0x00, 0x00}, sig_size); // ELKA
+    if (!pit) {
+        sig_size = 4;
+        pit = find_sig(buffer, size, (uint8_t[]){0x07, 0x10, 0x8A, 0x00}, sig_size); // NSG 2-nd image
+        if (pit) {
+            if (pit - 8 >= buffer) {
+                uint8_t *found = find_sig(pit - 8, sig_size, (uint8_t[]){0x15, 0x10, 0x8A, 0x00}, sig_size); // !PROTO
+                if (found) {
+                    pit = found;
+                }
+            }
+            *platform = 1;
+        } else {
+            pit = find_sig(buffer, size, (uint8_t[]){0x34, 0x34, 0x88, 0x00}, sig_size); // SG
+            if (pit) {
+                *platform = 0;
+            }
+        }
+    } else {
+        *platform = 2;
+    }
+    return pit;
 }
