@@ -24,6 +24,19 @@ static void RGB332_to_RGBA8888(uint8_t pixel, uint8_t *dest) {
     dest[3] = 0xFF;
 }
 
+static void ARGB444_to_RGBA8888(uint16_t pixel, uint8_t *dest) {
+    uint8_t r = (pixel >> 8) & 0x0F;
+    uint8_t g = (pixel >> 4) & 0x0F;
+    uint8_t b = pixel & 0x0F;
+    r = (r << 4) | r;
+    g = (g << 4) | g;
+    b = (b << 4) | b;
+    dest[0] = r;
+    dest[1] = g;
+    dest[2] = b;
+    dest[3] = 0xFF;
+}
+
 static void RGB565_to_RGBA8888(uint16_t pixel, uint8_t *dest) {
     if (pixel == RGB565_TRANSPARENT_COLOR) {
         memset(dest, 0, 4);
@@ -35,19 +48,6 @@ static void RGB565_to_RGBA8888(uint16_t pixel, uint8_t *dest) {
     r = (r << 3) | (r >> 2);
     g = (g << 2) | (g >> 4);
     b = (b << 3) | (b >> 2);
-    dest[0] = r;
-    dest[1] = g;
-    dest[2] = b;
-    dest[3] = 0xFF;
-}
-
-static void ARGB444_to_RGBA8888(uint16_t pixel, uint8_t *dest) {
-    uint8_t r = (pixel >> 8) & 0x0F;
-    uint8_t g = (pixel >> 4) & 0x0F;
-    uint8_t b = pixel & 0x0F;
-    r = (r << 4) | r;
-    g = (g << 4) | g;
-    b = (b << 4) | b;
     dest[0] = r;
     dest[1] = g;
     dest[2] = b;
@@ -76,7 +76,7 @@ int simg_get_bpp_by_type(unsigned int type) {
 
 uint8_t *simg_unpack_rle(const uint8_t *rle_bitmap, uint16_t width, uint16_t height, int bpp) {
     if (rle_bitmap) {
-        const uint16_t permission = width * height;
+        const int permission = width * height;
 
         const size_t bytes_per_pixel = bpp / 8;
         const size_t bitmap_size = permission * bytes_per_pixel;
@@ -170,7 +170,7 @@ uint32_t simg_addr_to_offset(const uint8_t *p) {
 }
 
 uint8_t *simg_find_pit(const uint8_t *buffer, size_t size, int platform) {
-    const uint8_t sig[] = {0x52, 0x45, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    const uint8_t sig[] = {0x52, 0x45, 0xFF, 0xFF};
     uint8_t *found = memmem(buffer, size, sig, sizeof(sig));
     if (!found) return NULL;
 
@@ -190,10 +190,9 @@ uint8_t *simg_find_pit(const uint8_t *buffer, size_t size, int platform) {
     uint32_t offset = simg_addr_to_offset(found);
     if (!offset || offset >= size) return NULL;
 
-    offset += (platform == 1) ? 24 : 28; // NSG : ELKA
-    if (offset >= size) return NULL;
-    found = (uint8_t*)buffer + offset;
-    if (found + 4 > buffer + size) return NULL;
+    found = memmem(buffer + offset, 0xFF, (uint8_t[]){0x1E, 0xFF, 0x2F, 0xE1}, 4); // ARM BX LR
+    if (found + 8 > buffer + size) return NULL;
+    found += 4;
 
     offset = simg_addr_to_offset(found);
     if (!offset || offset >= size) return NULL;
