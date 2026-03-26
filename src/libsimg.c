@@ -61,7 +61,7 @@ static void ARGB8888_to_RGBA8888(const uint8_t *argb8888, uint8_t *dest) {
      dest[3] = argb8888[3];
 }
 
-int simg_get_bpp_by_type(unsigned int type) {
+int simg_get_bpp_by_type(int type) {
     if (type & 0x80) {
         type &= ~0x80;
     }
@@ -163,7 +163,7 @@ int simg_write_png(const char *filename, const uint8_t *pixels, uint16_t width, 
 
 uint32_t simg_addr_to_offset(const uint8_t *p) {
     const uint32_t addr = p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
-    if (addr < 0xA0000000 || addr > 0xA8000000) {
+    if (addr < 0xA0000000 || addr >= 0xA8000000) {
         return 0;
     }
     return addr - 0xA0000000;
@@ -180,7 +180,9 @@ static uint8_t *find_sig(const uint8_t *buffer, size_t size, const uint8_t *sig,
 uint8_t *simg_find_pit(const uint8_t *buffer, size_t size, int *platform) {
     size_t sig_size = 8;
     uint8_t *pit = find_sig(buffer, size,  (uint8_t[]){0x15, 0x00, 0x10, 0x00, 0x8A, 0x00, 0x00, 0x00}, sig_size); // ELKA
-    if (!pit) {
+    if (pit) {
+        *platform = 2;
+    } else {
         sig_size = 4;
         pit = find_sig(buffer, size, (uint8_t[]){0x07, 0x10, 0x8A, 0x00}, sig_size); // NSG 2-nd image
         if (pit) {
@@ -197,8 +199,6 @@ uint8_t *simg_find_pit(const uint8_t *buffer, size_t size, int *platform) {
                 *platform = 0;
             }
         }
-    } else {
-        *platform = 2;
     }
     return pit;
 }

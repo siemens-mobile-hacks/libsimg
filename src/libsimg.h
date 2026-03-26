@@ -10,11 +10,12 @@ enum SIMGType {
     SIMG_TYPE_RGB565       = 0x8,
     SIMG_TYPE_ARGB8888     = 0xA,
     SIMG_TYPE_RLE_RGB332   = 0x85,
+    SIMG_TYPE_RLE_ARGB4444 = 0x87,
     SIMG_TYPE_RLE_RGB565   = 0x88,
     SIMG_TYPE_RLE_ARGB8888 = 0x8A,
 };
 
-int simg_get_bpp_by_type(unsigned int type);
+int simg_get_bpp_by_type(int type);
 uint8_t *simg_unpack_rle(const uint8_t *rle_bitmap, uint16_t width, uint16_t height, int bpp);
 uint8_t *simg_unpack_1bit_raw(const uint8_t *data, uint16_t width, uint16_t height);
 
